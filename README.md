@@ -208,3 +208,23 @@ Expected output: **18 passed, 0 failed**
 |-------|-------|
 | Username | `admin` |
 | Password | `admin123` |
+
+---
+
+## 🖼️ Application Screenshots & Walkthrough
+
+### 1. Login Page
+*Premium glassmorphism card with real-time field validation.*
+![Login Screen](screenshots/1_login_page.png)
+
+### 2. Dashboard
+*Key metrics and interactive department distribution charts.*
+![Dashboard](screenshots/2_dashboard_page.png)
+
+### 3. Employee Management
+*Interactive table displaying employee details with multi-field search, filters, pagination, and modal-based CRUD.*
+![Employee Management](screenshots/3_employee_management_page.png)
+
+### 4. Attendance Management
+*Real-time local clock console for checking in/out, status classification, log table, and CSV report export.*
+![Attendance Management](screenshots/4_attendance_page.png)
