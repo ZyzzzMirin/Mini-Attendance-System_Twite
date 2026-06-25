@@ -221,6 +221,7 @@ const Attendance = () => {
   const [toast, setToast] = useState(null);
   const [modal, setModal] = useState(null);
   const [exporting, setExporting] = useState(false);
+  const [exportingExcel, setExportingExcel] = useState(false);
 
   const showToast = (message, type = 'success') => setToast({ message, type });
 
@@ -305,11 +306,23 @@ const Attendance = () => {
     setExporting(true);
     try {
       await api.attendance.exportCsv({ search, status: statusFilter, startDate, endDate });
-      showToast('Report exported successfully!');
+      showToast('CSV report exported successfully!');
     } catch (err) {
-      showToast('Failed to export report.', 'error');
+      showToast('Failed to export CSV report.', 'error');
     } finally {
       setExporting(false);
+    }
+  };
+
+  const handleExportExcel = async () => {
+    setExportingExcel(true);
+    try {
+      await api.attendance.exportExcel({ search, status: statusFilter, startDate, endDate });
+      showToast('Excel report exported successfully!');
+    } catch (err) {
+      showToast('Failed to export Excel report.', 'error');
+    } finally {
+      setExportingExcel(false);
     }
   };
 
@@ -422,6 +435,15 @@ const Attendance = () => {
             <button className="btn btn-secondary" onClick={handleExport} disabled={exporting}>
               <Download size={15} />
               {exporting ? 'Exporting...' : 'Export CSV'}
+            </button>
+            <button
+              className="btn btn-secondary"
+              onClick={handleExportExcel}
+              disabled={exportingExcel}
+              style={{ background: 'linear-gradient(135deg, #16a34a, #15803d)', color: 'white', borderColor: 'transparent' }}
+            >
+              <Download size={15} />
+              {exportingExcel ? 'Exporting...' : 'Export Excel'}
             </button>
           </div>
         </div>

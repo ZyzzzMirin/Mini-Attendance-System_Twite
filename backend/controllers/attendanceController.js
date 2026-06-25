@@ -1,4 +1,5 @@
 const db = require('../db');
+const ExcelJS = require('exceljs');
 
 // GET /api/attendance (List, Search, Filter, Sort, Pagination)
 const getAttendanceRecords = async (req, res) => {
@@ -351,10 +352,125 @@ const exportAttendanceRecords = async (req, res) => {
   }
 };
 
+// GET /api/attendance/export-excel (Download Excel .xlsx report)
+const exportAttendanceExcel = async (req, res) => {
+  try {
+    const { search = '', status = '', startDate = '', endDate = '' } = req.query;
+
+    let queryConditions = [];
+    let queryParams = [];
+
+    if (search.trim()) {
+      queryConditions.push('(e.name LIKE ? OR a.employee_id LIKE ? OR e.department LIKE ?)');
+      const wildcard = `%${search.trim()}%`;
+      queryParams.push(wildcard, wildcard, wildcard);
+    }
+    if (status.trim()) {
+      queryConditions.push('a.status = ?');
+      queryParams.push(status.trim());
+    }
+    if (startDate.trim()) {
+      queryConditions.push('a.date >= ?');
+      queryParams.push(startDate.trim());
+    }
+    if (endDate.trim()) {
+      queryConditions.push('a.date <= ?');
+      queryParams.push(endDate.trim());
+    }
+
+    const whereClause = queryConditions.length > 0 ? `WHERE ${queryConditions.join(' AND ')}` : '';
+    const sql = `
+      SELECT a.date, a.employee_id, e.name, e.department, e.designation, a.check_in, a.check_out, a.status
+      FROM attendance a
+      JOIN employees e ON a.employee_id = e.employee_id
+      ${whereClause}
+      ORDER BY a.date DESC, a.employee_id ASC
+    `;
+    const records = await db.query(sql, queryParams);
+
+    // Build Excel workbook
+    const workbook = new ExcelJS.Workbook();
+    workbook.creator = 'AttendTrack System';
+    workbook.created = new Date();
+
+    const sheet = workbook.addWorksheet('Attendance Report');
+
+    // Header row with styling
+    sheet.columns = [
+      { header: 'Date',           key: 'date',        width: 14 },
+      { header: 'Employee ID',    key: 'employee_id', width: 14 },
+      { header: 'Employee Name',  key: 'name',        width: 22 },
+      { header: 'Department',     key: 'department',  width: 18 },
+      { header: 'Designation',    key: 'designation', width: 22 },
+      { header: 'Check-In',       key: 'check_in',    width: 12 },
+      { header: 'Check-Out',      key: 'check_out',   width: 12 },
+      { header: 'Status',         key: 'status',      width: 12 }
+    ];
+
+    // Style the header row
+    const headerRow = sheet.getRow(1);
+    headerRow.eachCell((cell) => {
+      cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FF4F46E5' } };
+      cell.font = { bold: true, color: { argb: 'FFFFFFFF' }, size: 11 };
+      cell.alignment = { vertical: 'middle', horizontal: 'center' };
+      cell.border = {
+        top: { style: 'thin' }, left: { style: 'thin' },
+        bottom: { style: 'thin' }, right: { style: 'thin' }
+      };
+    });
+    headerRow.height = 22;
+
+    // Add data rows
+    records.forEach((row, i) => {
+      const dataRow = sheet.addRow({
+        date:        row.date        || '',
+        employee_id: row.employee_id || '',
+        name:        row.name        || '',
+        department:  row.department  || '',
+        designation: row.designation || '',
+        check_in:    row.check_in    || '-',
+        check_out:   row.check_out   || '-',
+        status:      row.status      || ''
+      });
+
+      // Alternate row shading
+      const bgColor = i % 2 === 0 ? 'FFF5F3FF' : 'FFFFFFFF';
+      dataRow.eachCell((cell) => {
+        cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: bgColor } };
+        cell.alignment = { vertical: 'middle', horizontal: 'center' };
+        cell.border = {
+          top: { style: 'thin', color: { argb: 'FFD1D5DB' } },
+          left: { style: 'thin', color: { argb: 'FFD1D5DB' } },
+          bottom: { style: 'thin', color: { argb: 'FFD1D5DB' } },
+          right: { style: 'thin', color: { argb: 'FFD1D5DB' } }
+        };
+
+        // Color-code the status cell
+        if (cell.col === 8) {
+          if (row.status === 'Present')  cell.font = { bold: true, color: { argb: 'FF16A34A' } };
+          if (row.status === 'Late')     cell.font = { bold: true, color: { argb: 'FFD97706' } };
+          if (row.status === 'Absent')   cell.font = { bold: true, color: { argb: 'FFDC2626' } };
+        }
+      });
+    });
+
+    // Stream the file to response
+    const today = new Date().toISOString().slice(0, 10);
+    res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
+    res.setHeader('Content-Disposition', `attachment; filename="attendance_report_${today}.xlsx"`);
+    await workbook.xlsx.write(res);
+    res.end();
+  } catch (err) {
+    console.error('Error exporting Excel:', err.message);
+    res.status(500).json({ error: 'Internal server error while exporting Excel report.' });
+  }
+};
+
 module.exports = {
   getAttendanceRecords,
   getEmployeeAttendanceHistory,
   markAttendance,
   getAttendanceSummary,
-  exportAttendanceRecords
+  exportAttendanceRecords,
+  exportAttendanceExcel
 };

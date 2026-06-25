@@ -8,6 +8,7 @@ router.use(authenticateToken);
 
 router.get('/', attendanceController.getAttendanceRecords);
 router.get('/export', attendanceController.exportAttendanceRecords);
+router.get('/export-excel', attendanceController.exportAttendanceExcel);
 router.get('/summary', attendanceController.getAttendanceSummary);
 router.get('/employee/:employee_id', attendanceController.getEmployeeAttendanceHistory);
 router.post('/mark', attendanceController.markAttendance);

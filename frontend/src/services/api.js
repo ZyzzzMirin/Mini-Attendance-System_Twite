@@ -20,8 +20,9 @@ const request = async (endpoint, options = {}) => {
 
   const response = await fetch(`${API_BASE_URL}${endpoint}`, config);
 
-  // If the response is a CSV download file
-  if (response.headers.get('content-type')?.includes('text/csv')) {
+  // If the response is a file download (CSV or Excel)
+  const contentType = response.headers.get('content-type') || '';
+  if (contentType.includes('text/csv') || contentType.includes('spreadsheetml')) {
     return response.blob();
   }
 
@@ -100,6 +101,20 @@ export const api = {
       const a = document.createElement('a');
       a.href = url;
       a.download = `attendance_report_${new Date().toISOString().slice(0, 10)}.csv`;
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      window.URL.revokeObjectURL(url);
+    },
+    exportExcel: async (params = {}) => {
+      const query = new URLSearchParams(params).toString();
+      const blob = await request(`/attendance/export-excel?${query}`);
+
+      // Trigger browser download
+      const url = window.URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `attendance_report_${new Date().toISOString().slice(0, 10)}.xlsx`;
       document.body.appendChild(a);
       a.click();
       a.remove();
