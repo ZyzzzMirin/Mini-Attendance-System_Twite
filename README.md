@@ -131,7 +131,12 @@ The `GET /api/employees` endpoint accepts query parameters for:
 
 ---
 
-## 🌐 API Reference
+## 🌐 API Reference & Interactive Docs
+
+Interactive API documentation (Swagger) is available at:
+👉 **[http://localhost:5000/api-docs](http://localhost:5000/api-docs)**
+
+### API Routes
 
 ### Auth
 | Method | Endpoint | Description |
@@ -228,3 +233,7 @@ Expected output: **18 passed, 0 failed**
 ### 4. Attendance Management
 *Real-time local clock console for checking in/out, status classification, log table, and CSV report export.*
 ![Attendance Management](screenshots/4_attendance_page.png)
+
+### 5. Interactive Swagger API Documentation
+*Full schema models, JWT token verification testing, and sandbox for live request execution.*
+![Swagger API Documentation](screenshots/5_swagger_documentation.png)

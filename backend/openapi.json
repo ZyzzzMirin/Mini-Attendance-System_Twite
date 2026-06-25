@@ -1,0 +1,498 @@
+{
+  "openapi": "3.0.0",
+  "info": {
+    "title": "AttendTrack – Mini Attendance Management System API",
+    "description": "API documentation for the AttendTrack full-stack attendance management system. All endpoints (except Auth) require a valid JWT Bearer token in the Authorization header.",
+    "version": "1.0.0"
+  },
+  "servers": [
+    {
+      "url": "http://localhost:5000/api",
+      "description": "Local Development Server"
+    }
+  ],
+  "components": {
+    "securitySchemes": {
+      "BearerAuth": {
+        "type": "http",
+        "scheme": "bearer",
+        "bearerFormat": "JWT",
+        "description": "Enter your JWT token in the format: `Bearer <token>`"
+      }
+    },
+    "schemas": {
+      "User": {
+        "type": "object",
+        "properties": {
+          "id": { "type": "integer", "example": 1 },
+          "username": { "type": "string", "example": "admin" },
+          "role": { "type": "string", "enum": ["admin", "employee"], "example": "admin" },
+          "created_at": { "type": "string", "format": "date-time" }
+        }
+      },
+      "Employee": {
+        "type": "object",
+        "required": ["employee_id", "name", "email", "mobile", "department", "designation"],
+        "properties": {
+          "id": { "type": "integer", "example": 5 },
+          "employee_id": { "type": "string", "example": "EMP101" },
+          "name": { "type": "string", "example": "John Doe" },
+          "email": { "type": "string", "format": "email", "example": "john@example.com" },
+          "mobile": { "type": "string", "example": "9876543210" },
+          "department": { "type": "string", "example": "Engineering" },
+          "designation": { "type": "string", "example": "Software Engineer" },
+          "status": { "type": "string", "enum": ["Active", "Inactive"], "example": "Active" },
+          "created_at": { "type": "string", "format": "date-time" },
+          "updated_at": { "type": "string", "format": "date-time" }
+        }
+      },
+      "AttendanceRecord": {
+        "type": "object",
+        "properties": {
+          "id": { "type": "integer", "example": 23 },
+          "employee_id": { "type": "string", "example": "EMP101" },
+          "date": { "type": "string", "format": "date", "example": "2026-06-25" },
+          "check_in": { "type": "string", "example": "09:05:00" },
+          "check_out": { "type": "string", "example": "17:30:00" },
+          "status": { "type": "string", "enum": ["Present", "Absent", "Late"], "example": "Present" },
+          "created_at": { "type": "string", "format": "date-time" },
+          "updated_at": { "type": "string", "format": "date-time" }
+        }
+      }
+    }
+  },
+  "security": [
+    {
+      "BearerAuth": []
+    }
+  ],
+  "paths": {
+    "/auth/login": {
+      "post": {
+        "summary": "Authenticate user & get JWT token",
+        "security": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": ["username", "password"],
+                "properties": {
+                  "username": { "type": "string", "example": "admin" },
+                  "password": { "type": "string", "example": "admin123" }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Authentication successful",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "token": { "type": "string", "example": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..." },
+                    "user": { "$ref": "#/components/schemas/User" }
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Invalid username or password"
+          }
+        }
+      }
+    },
+    "/auth/register": {
+      "post": {
+        "summary": "Register a new user (Admin only context)",
+        "security": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": ["username", "password"],
+                "properties": {
+                  "username": { "type": "string", "example": "manager" },
+                  "password": { "type": "string", "example": "securepass" },
+                  "role": { "type": "string", "enum": ["admin", "employee"], "default": "admin" }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "User created successfully",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "message": { "type": "string", "example": "User registered successfully" }
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Username already exists or invalid data"
+          }
+        }
+      }
+    },
+    "/employees": {
+      "get": {
+        "summary": "List, Search, Filter, Sort, and Paginate employees",
+        "parameters": [
+          { "name": "search", "in": "query", "description": "Search by name, email, employee ID, or mobile", "required": false, "schema": { "type": "string" } },
+          { "name": "department", "in": "query", "description": "Filter by department", "required": false, "schema": { "type": "string" } },
+          { "name": "status", "in": "query", "description": "Filter by status (Active/Inactive)", "required": false, "schema": { "type": "string", "enum": ["Active", "Inactive"] } },
+          { "name": "sortBy", "in": "query", "description": "Column to sort by", "required": false, "schema": { "type": "string", "default": "employee_id" } },
+          { "name": "sortOrder", "in": "query", "description": "Sort direction (ASC/DESC)", "required": false, "schema": { "type": "string", "enum": ["ASC", "DESC"], "default": "ASC" } },
+          { "name": "page", "in": "query", "description": "Page number", "required": false, "schema": { "type": "integer", "default": 1 } },
+          { "name": "limit", "in": "query", "description": "Items per page", "required": false, "schema": { "type": "integer", "default": 10 } }
+        ],
+        "responses": {
+          "200": {
+            "description": "A paginated list of employees",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "employees": {
+                      "type": "array",
+                      "items": { "$ref": "#/components/schemas/Employee" }
+                    },
+                    "pagination": {
+                      "type": "object",
+                      "properties": {
+                        "totalItems": { "type": "integer", "example": 25 },
+                        "totalPages": { "type": "integer", "example": 3 },
+                        "currentPage": { "type": "integer", "example": 1 },
+                        "limit": { "type": "integer", "example": 10 }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "summary": "Add a new employee (Admin only)",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": { "$ref": "#/components/schemas/Employee" }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Employee added successfully",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "message": { "type": "string", "example": "Employee added successfully" },
+                    "id": { "type": "integer", "example": 5 },
+                    "employee": { "$ref": "#/components/schemas/Employee" }
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid payload or duplicate fields"
+          },
+          "403": {
+            "description": "Access denied. Admin role required."
+          }
+        }
+      }
+    },
+    "/employees/{id}": {
+      "get": {
+        "summary": "Get details of a specific employee",
+        "parameters": [
+          { "name": "id", "in": "path", "required": true, "schema": { "type": "integer" } }
+        ],
+        "responses": {
+          "200": {
+            "description": "Employee details",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/Employee" }
+              }
+            }
+          },
+          "404": {
+            "description": "Employee not found"
+          }
+        }
+      },
+      "put": {
+        "summary": "Update an employee's details (Admin only)",
+        "parameters": [
+          { "name": "id", "in": "path", "required": true, "schema": { "type": "integer" } }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": { "$ref": "#/components/schemas/Employee" }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Employee updated successfully",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "message": { "type": "string", "example": "Employee updated successfully" },
+                    "employee": { "$ref": "#/components/schemas/Employee" }
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid input or email/ID clash"
+          },
+          "404": {
+            "description": "Employee not found"
+          }
+        }
+      },
+      "delete": {
+        "summary": "Delete an employee (Admin only)",
+        "parameters": [
+          { "name": "id", "in": "path", "required": true, "schema": { "type": "integer" } }
+        ],
+        "responses": {
+          "200": {
+            "description": "Employee deleted successfully"
+          },
+          "404": {
+            "description": "Employee not found"
+          }
+        }
+      }
+    },
+    "/attendance/mark": {
+      "post": {
+        "summary": "Mark check-in or check-out for today",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": ["employee_id", "type"],
+                "properties": {
+                  "employee_id": { "type": "string", "example": "EMP101" },
+                  "type": { "type": "string", "enum": ["checkin", "checkout"], "example": "checkin" }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Check-in marked successfully",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "message": { "type": "string", "example": "Check-in marked successfully" },
+                    "record": { "$ref": "#/components/schemas/AttendanceRecord" }
+                  }
+                }
+              }
+            }
+          },
+          "200": {
+            "description": "Check-out marked successfully"
+          },
+          "400": {
+            "description": "Employee inactive or already checked out"
+          }
+        }
+      }
+    },
+    "/attendance": {
+      "get": {
+        "summary": "List, Search, Filter, Sort, and Paginate attendance logs",
+        "parameters": [
+          { "name": "search", "in": "query", "description": "Search by employee name or ID", "required": false, "schema": { "type": "string" } },
+          { "name": "department", "in": "query", "description": "Filter by department", "required": false, "schema": { "type": "string" } },
+          { "name": "status", "in": "query", "description": "Filter by attendance status (Present/Absent/Late)", "required": false, "schema": { "type": "string", "enum": ["Present", "Absent", "Late"] } },
+          { "name": "date", "in": "query", "description": "Filter by specific date (YYYY-MM-DD)", "required": false, "schema": { "type": "string", "format": "date" } },
+          { "name": "sortBy", "in": "query", "description": "Column to sort by", "required": false, "schema": { "type": "string", "default": "date" } },
+          { "name": "sortOrder", "in": "query", "description": "Sort direction (ASC/DESC)", "required": false, "schema": { "type": "string", "enum": ["ASC", "DESC"], "default": "DESC" } },
+          { "name": "page", "in": "query", "description": "Page number", "required": false, "schema": { "type": "integer", "default": 1 } },
+          { "name": "limit", "in": "query", "description": "Items per page", "required": false, "schema": { "type": "integer", "default": 10 } }
+        ],
+        "responses": {
+          "200": {
+            "description": "A paginated list of attendance records",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "records": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "allOf": [
+                          { "$ref": "#/components/schemas/AttendanceRecord" },
+                          {
+                            "type": "object",
+                            "properties": {
+                              "name": { "type": "string", "example": "John Doe" },
+                              "department": { "type": "string", "example": "Engineering" }
+                            }
+                          }
+                        ]
+                      }
+                    },
+                    "pagination": {
+                      "type": "object",
+                      "properties": {
+                        "totalItems": { "type": "integer", "example": 12 },
+                        "totalPages": { "type": "integer", "example": 2 },
+                        "currentPage": { "type": "integer", "example": 1 },
+                        "limit": { "type": "integer", "example": 10 }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/attendance/summary": {
+      "get": {
+        "summary": "Get today's attendance metrics summary",
+        "responses": {
+          "200": {
+            "description": "Today's summary stats",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "present": { "type": "integer", "example": 18 },
+                    "late": { "type": "integer", "example": 2 },
+                    "absent": { "type": "integer", "example": 4 }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/attendance/employee/{employee_id}": {
+      "get": {
+        "summary": "Get individual attendance logs history for a specific employee",
+        "parameters": [
+          { "name": "employee_id", "in": "path", "required": true, "schema": { "type": "string" } }
+        ],
+        "responses": {
+          "200": {
+            "description": "List of attendance records for the employee",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": { "$ref": "#/components/schemas/AttendanceRecord" }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/attendance/export": {
+      "get": {
+        "summary": "Export filtered attendance logs as a CSV file",
+        "parameters": [
+          { "name": "search", "in": "query", "required": false, "schema": { "type": "string" } },
+          { "name": "department", "in": "query", "required": false, "schema": { "type": "string" } },
+          { "name": "status", "in": "query", "required": false, "schema": { "type": "string" } },
+          { "name": "date", "in": "query", "required": false, "schema": { "type": "string", "format": "date" } }
+        ],
+        "responses": {
+          "200": {
+            "description": "CSV File stream containing report records",
+            "headers": {
+              "Content-Disposition": {
+                "schema": {
+                  "type": "string",
+                  "example": "attachment; filename=attendance_report_2026-06-25.csv"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/dashboard/stats": {
+      "get": {
+        "summary": "Get stats dashboard data (aggregates & chart distributions)",
+        "responses": {
+          "200": {
+            "description": "Dashboard metadata",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "stats": {
+                      "type": "object",
+                      "properties": {
+                        "totalEmployees": { "type": "integer", "example": 24 },
+                        "activeEmployees": { "type": "integer", "example": 22 },
+                        "presentToday": { "type": "integer", "example": 15 },
+                        "lateToday": { "type": "integer", "example": 1 }
+                      }
+                    },
+                    "departmentDistribution": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "properties": {
+                          "department": { "type": "string", "example": "Engineering" },
+                          "count": { "type": "integer", "example": 10 }
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+}
